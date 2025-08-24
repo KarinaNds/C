@@ -1,0 +1,184 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+// Declarações das funções
+void bubbleSort(int arr[], int n);
+void selectionSort(int arr[], int n);
+void insertionSort(int arr[], int n);
+void merge_sort(int v[], int n);
+void preencherAleatoriamente(int arr[], int n);
+void preencherDecrescente(int arr[], int n);
+
+// Função de Bubble Sort
+void bubbleSort(int arr[], int n) {
+    int i, j, temp;
+    for (i = 0; i < n-1; i++) {
+        for (j = 0; j < n-i-1; j++) {
+            if (arr[j] > arr[j+1]) {
+                temp = arr[j];
+                arr[j] = arr[j+1];
+                arr[j+1] = temp;
+            }
+        }
+    }
+}
+
+// Função de Selection Sort
+void selectionSort(int arr[], int n) {
+    int i, j, minIndex, temp;
+    for (i = 0; i < n-1; i++) {
+        minIndex = i;
+        for (j = i+1; j < n; j++) {
+            if (arr[j] < arr[minIndex]) {
+                minIndex = j;
+            }
+        }
+        temp = arr[minIndex];
+        arr[minIndex] = arr[i];
+        arr[i] = temp;
+    }
+}
+
+// Função de Insertion Sort
+void insertionSort(int arr[], int n) {
+    int i, key, j;
+    for (i = 1; i < n; i++) {
+        key = arr[i];
+        j = i - 1;
+        while (j >= 0 && arr[j] > key) {
+            arr[j+1] = arr[j];
+            j = j - 1;
+        }
+        arr[j+1] = key;
+    }
+}
+
+// Função para preencher uma lista com números aleatórios
+void preencherAleatoriamente(int arr[], int n) {
+    for (int i = 0; i < n; i++) {
+        arr[i] = rand() % 1000; // Números aleatórios entre 0 e 999
+    }
+}
+
+// Função para preencher uma lista em ordem decrescente
+void preencherDecrescente(int arr[], int n) {
+    for (int i = 0; i < n; i++) {
+        arr[i] = n - i;
+    }
+}
+
+void merge(int v1[], int n1, int v2[], int n2, int dest[]){
+  int i1 = 0;
+  int i2 = 0;
+  int i = 0;
+  while (i1 < n1 && i2 < n2){
+    if (v1[i1] < v2[i2]){
+      dest[i] = v1[i1];
+      i1++;
+    }
+    else{
+      dest[i] = v2[i2];
+      i2++;
+    }
+    i++;
+  }
+  while (i1 < n1){
+    dest[i] = v1[i1];
+    i1++;
+    i++;
+  }
+  while (i2 < n2){
+    dest[i] = v2[i2];
+    i2++;
+    i++;
+  }
+}
+
+
+void merge_sort(int v[], int n){
+  if (n < 2) return;
+
+  int meio = n/2;
+  int n1 = meio;
+  int v1[n1];
+  for (int i = 0; i < n1; i++){
+    v1[i] = v[i];
+  }
+  int n2 = n-meio;
+  int v2[n2];
+  for (int i = 0; i < n2; i++){
+    v2[i] = v[meio+i];
+  }
+  merge_sort(v1, n1);
+  merge_sort(v2, n2);
+  merge(v1, n1, v2, n2, v); 
+}
+
+
+
+
+int main() {
+    // Inicializa a seed para números aleatórios
+    srand(time(NULL));
+
+    int tamanhos[] = {1000, 10000, 100000};
+    int i, j;
+
+    for (i = 0; i < sizeof(tamanhos) / sizeof(tamanhos[0]); i++) {
+        int tamanho = tamanhos[i];
+        int vetor[tamanho];
+        printf("Tamanho da lista: %d\n", tamanho);
+
+        // Teste com lista ordenada em ordem decrescente
+        printf("Ordem 1: Lista ordenada em ordem decrescente\n");
+        preencherDecrescente(vetor, tamanho);
+
+        clock_t t_bubble = clock();
+        bubbleSort(vetor, tamanho);
+        t_bubble = clock() - t_bubble;
+        printf("Bubble Sort: Tempo de execucao: %lf ms\n", ((double)t_bubble) / (CLOCKS_PER_SEC/1000));
+
+        clock_t t_selection = clock();
+        selectionSort(vetor, tamanho);
+        t_selection = clock() - t_selection;
+        printf("Selection Sort: Tempo de execucao: %lf ms\n", ((double)t_selection) / (CLOCKS_PER_SEC/1000));
+
+        clock_t t_insertion = clock();
+        insertionSort(vetor, tamanho);
+        t_insertion = clock() - t_insertion;
+        printf("Insertion Sort: Tempo de execucao: %lf ms\n", ((double)t_insertion) / (CLOCKS_PER_SEC/1000));
+
+        clock_t t_merge = clock();
+        merge_sort(vetor, tamanho);
+        t_merge = clock() - t_merge;  
+        printf("Merge Sort: Tempo de execucao: %lf ms\n",((double)t_merge)/(CLOCKS_PER_SEC/1000));
+
+
+        // Teste com lista desordenada com números aleatórios
+        printf("Ordem 2: Lista desordenada com números aleatórios\n");
+        preencherAleatoriamente(vetor, tamanho);
+
+        t_bubble = clock();
+        bubbleSort(vetor, tamanho);
+        t_bubble = clock() - t_bubble;
+        printf("Bubble Sort: Tempo de execucao: %lf ms\n", ((double)t_bubble) / (CLOCKS_PER_SEC/1000));
+
+        t_selection = clock();
+        selectionSort(vetor, tamanho);
+        t_selection = clock() - t_selection;
+        printf("Selection Sort: Tempo de execucao: %lf ms\n", ((double)t_selection) / (CLOCKS_PER_SEC/1000));
+
+        t_insertion = clock();
+        insertionSort(vetor, tamanho);
+        t_insertion = clock() - t_insertion;
+        printf("Insertion Sort: Tempo de execucao: %lf ms\n", ((double)t_insertion) / (CLOCKS_PER_SEC/1000));
+
+        t_merge = clock();
+        merge_sort(vetor, tamanho);
+        t_merge = clock() - t_merge;  
+        printf("Merge Sort: Tempo de execucao: %lf ms\n", ((double)t_merge) / (CLOCKS_PER_SEC/1000));
+    }
+
+    return 0;
+}
