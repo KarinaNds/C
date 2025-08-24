@@ -1,0 +1,112 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+// Passo 1: Modelagem dos Polinômios
+// Exemplo de polinômios
+int polinomio1[] = {3, 2, 1}; // (3x^2) + 2x + 1
+int grau1 = 2; // Grau do polinômio1
+
+int polinomio2[] = {1, 0, 2}; // (1x^2) + 0x + 2
+int grau2 = 2; // Grau do polinômio2
+
+// Passo 2: Função para Exibir o Polinômio
+void exibirPolinomio(int polinomio[], int grau) {
+    for (int i = 0; i <= grau; i++) {
+        // Se o coeficiente não é zero, imprime
+        if (polinomio[i] != 0) {
+            printf("%d", polinomio[i]);
+            // Imprime a parte da variável x com o expoente
+            if (i != grau) {
+                printf("x^%d ", grau - i);
+            }
+            // Se o próximo coeficiente é positivo, imprime "+" entre os termos
+            if (i != grau - 1 && polinomio[i + 1] > 0) {
+                printf("+ ");
+            }
+        }
+    }
+    printf("\n"); // Nova linha após exibir o polinômio
+}
+
+// Passo 3: Função para Calcular o Valor do Polinômio
+int calcularPolinomio(int polinomio[], int grau, int x) {
+    int resultado = 0; // Inicializa o resultado
+    // Calcula o valor do polinômio substituindo x
+    for (int i = 0; i <= grau; i++) {
+        resultado += polinomio[i] * pow(x, grau - i); // soma os termos
+    }
+    return resultado; // Retorna o resultado final
+}
+
+// Passo 4: Função para Somar Polinômios
+int* somarPolinomios(int p1[], int grau1, int p2[], int grau2, int *grauResultado) {
+    int grauMax = (grau1 > grau2) ? grau1 : grau2; // Define o grau do resultado
+    int* resultado = (int*)malloc((grauMax + 1) * sizeof(int)); // Aloca memória para o resultado
+
+    // Soma os coeficientes correspondentes
+    for (int i = 0; i <= grauMax; i++) {
+        int coef1 = (i <= grau1) ? p1[grau1 - i] : 0; // Coeficiente do primeiro polinômio
+        int coef2 = (i <= grau2) ? p2[grau2 - i] : 0; // Coeficiente do segundo polinômio
+        resultado[i] = coef1 + coef2; // Soma os coeficientes
+    }
+    *grauResultado = grauMax; // Atualiza o grau do polinômio resultante
+    return resultado; // Retorna o vetor resultado
+}
+
+// Passo 5: Função para Multiplicar Polinômios
+int* multiplicarPolinomios(int p1[], int grau1, int p2[], int grau2, int *grauResultado) {
+    int grauMax = grau1 + grau2; // O grau do resultado é a soma dos graus
+    int* resultado = (int*)calloc(grauMax + 1, sizeof(int)); // Aloca e inicializa com zero
+
+    // Multiplica os coeficientes e acumula os resultados
+    for (int i = 0; i <= grau1; i++) {
+        for (int j = 0; j <= grau2; j++) {
+            resultado[grauMax - (i + j)] += p1[grau1 - i] * p2[grau2 - j]; // Acumula o produto
+        }
+    }
+    *grauResultado = grauMax; // Atualiza o grau do polinômio resultante
+    return resultado; // Retorna o vetor resultado
+}
+
+// Passo 6: Interface Principal
+int main() {
+    int grauResultado; // Para armazenar o grau do resultado
+    int opcao; // Para armazenar a opção do usuário
+    int x; // Para armazenar o valor de x
+
+    // Exibe o menu de operações
+    printf("Escolha uma operação:\n");
+    printf("1. Calcular valor do polinômio\n");
+    printf("2. Somar polinômios\n");
+    printf("3. Multiplicar polinômios\n");
+    scanf("%d", &opcao); // Lê a opção do usuário
+
+    switch (opcao) {
+        case 1: // Calcular valor do polinômio
+            printf("Digite o valor de x: ");
+            scanf("%d", &x); // Lê o valor de x
+            printf("Resultado: %d\n", calcularPolinomio(polinomio1, grau1, x)); // Calcula e exibe o resultado
+            break;
+        case 2: // Somar polinômios
+            {
+                int* resultado = somarPolinomios(polinomio1, grau1, polinomio2, grau2, &grauResultado);
+                printf("Resultado da soma: ");
+                exibirPolinomio(resultado, grauResultado); // Exibe o polinômio resultante
+                free(resultado); // Libera a memória alocada
+            }
+            break;
+        case 3: // Multiplicar polinômios
+            {
+                int* resultado = multiplicarPolinomios(polinomio1, grau1, polinomio2, grau2, &grauResultado);
+                printf("Resultado da multiplicação: ");
+                exibirPolinomio(resultado, grauResultado); // Exibe o polinômio resultante
+                free(resultado); // Libera a memória alocada
+            }
+            break;
+        default: // Opção inválida
+            printf("Opção inválida.\n");
+    }
+
+    return 0; // Finaliza o programa
+}
