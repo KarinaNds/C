@@ -1,0 +1,324 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+    unsigned char r;
+    unsigned char g;
+    unsigned char b;
+} Pixel;
+
+typedef struct {
+    unsigned char header[54];
+    int width;
+    int height;
+    int padding;
+    Pixel **matriz; // Dynamic 2D array
+} ImagemBMP;
+
+void lerImagemBMP(const char *nomeArquivo, ImagemBMP *img);
+void compactarImagem(ImagemBMP *img, int linhaIni, int linhaFim, int colIni, int colFim, unsigned char *vetorR, unsigned char *vetorG, unsigned char *vetorB, int *indice, int max_size);
+void salvarCompactado(const char *nomeArquivo, ImagemBMP *img, unsigned char *vetorR, unsigned char *vetorG, unsigned char *vetorB, int tamanho);
+void descompactarImagem(const char *arquivoCompactado, const char *arquivoSaida);
+void reconstruir(ImagemBMP *img, unsigned char *vetorR, unsigned char *vetorG, unsigned char *vetorB, int *indice, int linhaIni, int linhaFim, int colIni, int colFim);
+Pixel obterPixelCentral(ImagemBMP *img, int linhaIni, int linhaFim, int colIni, int colFim);
+void preencherMatriz(ImagemBMP *img, int linhaIni, int linhaFim, int colIni, int colFim, Pixel cor);
+int calculaPadding(int largura);
+void freeImagemBMP(ImagemBMP *img);
+
+int main() {
+    ImagemBMP imagem;
+    int max_size = 10000; // Increased size for compressed data
+    unsigned char *vetorR = (unsigned char *)malloc(max_size * sizeof(unsigned char));
+    unsigned char *vetorG = (unsigned char *)malloc(max_size * sizeof(unsigned char));
+    unsigned char *vetorB = (unsigned char *)malloc(max_size * sizeof(unsigned char));
+    int indice = 0;
+
+    if (!vetorR || !vetorG || !vetorB) {
+        printf("Erro: Falha na alocação de memória para vetores.\n");
+        return 1;
+    }
+
+    printf("Lendo a imagem BMP...\n");
+    lerImagemBMP("entrada.bmp", &imagem);
+
+    printf("Compactando a imagem...\n");
+    compactarImagem(&imagem, 0, imagem.height - 1, 0, imagem.width - 1, vetorR, vetorG, vetorB, &indice, max_size);
+
+    printf("Salvando arquivo compactado...\n");
+    salvarCompactado("imagemCompactada.zmp", &imagem, vetorR, vetorG, vetorB, indice);
+
+    printf("Descompactando a imagem...\n");
+    descompactarImagem("imagemCompactada.zmp", "imagemDescompactada.bmp");
+
+    printf("Processo concluído.\n");
+
+    // Free allocated memory
+    freeImagemBMP(&imagem);
+    free(vetorR);
+    free(vetorG);
+    free(vetorB);
+
+    return 0;
+}
+
+void lerImagemBMP(const char *nomeArquivo, ImagemBMP *img) {
+    FILE *f = fopen(nomeArquivo, "rb");
+    if (!f) {
+        perror("Erro ao abrir o arquivo entrada.bmp");
+        exit(1);
+    }
+
+    // Read header
+    if (fread(img->header, sizeof(unsigned char), 54, f) != 54) {
+        printf("Erro: Não foi possível ler o cabeçalho do BMP.\n");
+        fclose(f);
+        exit(1);
+    }
+
+    // Validate BMP format
+    if (img->header[0] != 'B' || img->header[1] != 'M') {
+        printf("Erro: Arquivo não é um BMP válido.\n");
+        fclose(f);
+        exit(1);
+    }
+    int bitCount = (img->header[29] << 8) | img->header[28];
+    if (bitCount != 24) {
+        printf("Erro: Apenas BMPs de 24 bits são suportados.\n");
+        fclose(f);
+        exit(1);
+    }
+
+    // Read width and height
+    img->width = (img->header[21] << 24) | (img->header[20] << 16) | (img->header[19] << 8) | img->header[18];
+    img->height = (img->header[25] << 24) | (img->header[24] << 16) | (img->header[23] << 8) | img->header[22];
+    img->padding = calculaPadding(img->width);
+
+    printf("Dimensões da imagem: %dx%d, padding: %d\n", img->width, img->height, img->padding);
+
+    // Allocate matrix dynamically
+    img->matriz = (Pixel **)malloc(img->height * sizeof(Pixel *));
+    if (!img->matriz) {
+        printf("Erro: Falha na alocação de memória para matriz.\n");
+        fclose(f);
+        exit(1);
+    }
+    for (int i = 0; i < img->height; i++) {
+        img->matriz[i] = (Pixel *)malloc(img->width * sizeof(Pixel));
+        if (!img->matriz[i]) {
+            printf("Erro: Falha na alocação de memória para matriz[%d].\n", i);
+            for (int j = 0; j < i; j++) free(img->matriz[j]);
+            free(img->matriz);
+            fclose(f);
+            exit(1);
+        }
+    }
+
+    // Read pixel data
+    for (int i = 0; i < img->height; i++) {
+        for (int j = 0; j < img->width; j++) {
+            if (fread(&img->matriz[i][j], sizeof(Pixel), 1, f) != 1) {
+                printf("Erro ao ler pixel na linha %d, coluna %d.\n", i, j);
+                freeImagemBMP(img);
+                fclose(f);
+                exit(1);
+            }
+        }
+        fseek(f, img->padding, SEEK_CUR);
+    }
+    fclose(f);
+}
+
+void compactarImagem(ImagemBMP *img, int linhaIni, int linhaFim, int colIni, int colFim, unsigned char *vetorR, unsigned char *vetorG, unsigned char *vetorB, int *indice, int max_size) {
+    int lin = linhaFim - linhaIni + 1;
+    int col = colFim - colIni + 1;
+
+    if (*indice >= max_size) {
+        printf("Erro: Tamanho do vetor de compressão excedido.\n");
+        exit(1);
+    }
+
+    if (lin <= 3 || col <= 3) {
+        Pixel p = obterPixelCentral(img, linhaIni, linhaFim, colIni, colFim);
+        vetorR[*indice] = p.r;
+        vetorG[*indice] = p.g;
+        vetorB[*indice] = p.b;
+        (*indice)++;
+        return;
+    }
+
+    int meioLinha = (linhaIni + linhaFim) / 2;
+    int meioCol = (colIni + colFim) / 2;
+
+    compactarImagem(img, linhaIni, meioLinha, colIni, meioCol, vetorR, vetorG, vetorB, indice, max_size);
+    compactarImagem(img, linhaIni, meioLinha, meioCol + 1, colFim, vetorR, vetorG, vetorB, indice, max_size);
+    compactarImagem(img, meioLinha + 1, linhaFim, colIni, meioCol, vetorR, vetorG, vetorB, indice, max_size);
+    compactarImagem(img, meioLinha + 1, linhaFim, meioCol + 1, colFim, vetorR, vetorG, vetorB, indice, max_size);
+}
+
+Pixel obterPixelCentral(ImagemBMP *img, int linhaIni, int linhaFim, int colIni, int colFim) {
+    int linhaCentral = (linhaIni + linhaFim) / 2;
+    int colCentral = (colIni + colFim) / 2;
+    return img->matriz[linhaCentral][colCentral];
+}
+
+void salvarCompactado(const char *nomeArquivo, ImagemBMP *img, unsigned char *vetorR, unsigned char *vetorG, unsigned char *vetorB, int tamanho) {
+    FILE *f = fopen(nomeArquivo, "wb");
+    if (!f) {
+        perror("Erro ao criar arquivo compactado");
+        exit(1);
+    }
+
+    fwrite(img->header, sizeof(unsigned char), 54, f);
+    for (int i = 0; i < tamanho; i++) {
+        fwrite(&vetorR[i], sizeof(unsigned char), 1, f);
+        fwrite(&vetorG[i], sizeof(unsigned char), 1, f);
+        fwrite(&vetorB[i], sizeof(unsigned char), 1, f);
+    }
+    fclose(f);
+}
+
+void descompactarImagem(const char *arquivoCompactado, const char *arquivoSaida) {
+    FILE *f = fopen(arquivoCompactado, "rb");
+    if (!f) {
+        perror("Erro ao abrir arquivo compactado");
+        exit(1);
+    }
+
+    unsigned char header[54];
+    if (fread(header, sizeof(unsigned char), 54, f) != 54) {
+        printf("Erro: Não foi possível ler o cabeçalho do arquivo compactado.\n");
+        fclose(f);
+        exit(1);
+    }
+
+    int width = (header[21] << 24) | (header[20] << 16) | (header[19] << 8) | header[18];
+    int height = (header[25] << 24) | (header[24] << 16) | (header[23] << 8) | header[22];
+    int padding = calculaPadding(width);
+
+    int max_size = 10000;
+    unsigned char *vetorR = (unsigned char *)malloc(max_size * sizeof(unsigned char));
+    unsigned char *vetorG = (unsigned char *)malloc(max_size * sizeof(unsigned char));
+    unsigned char *vetorB = (unsigned char *)malloc(max_size * sizeof(unsigned char));
+    if (!vetorR || !vetorG || !vetorB) {
+        printf("Erro: Falha na alocação de memória para vetores de descompressão.\n");
+        fclose(f);
+        exit(1);
+    }
+
+    int tam = 0;
+    while (fread(&vetorR[tam], sizeof(unsigned char), 1, f) == 1) {
+        if (fread(&vetorG[tam], sizeof(unsigned char), 1, f) != 1 ||
+            fread(&vetorB[tam], sizeof(unsigned char), 1, f) != 1) {
+            printf("Erro ao ler dados compactados.\n");
+            free(vetorR);
+            free(vetorG);
+            free(vetorB);
+            fclose(f);
+            exit(1);
+        }
+        tam++;
+    }
+    fclose(f);
+
+    ImagemBMP img;
+    memcpy(img.header, header, 54);
+    img.width = width;
+    img.height = height;
+    img.padding = padding;
+
+    // Allocate matrix dynamically
+    img.matriz = (Pixel **)malloc(img.height * sizeof(Pixel *));
+    if (!img.matriz) {
+        printf("Erro: Falha na alocação de memória para matriz.\n");
+        free(vetorR);
+        free(vetorG);
+        free(vetorB);
+        exit(1);
+    }
+    for (int i = 0; i < img.height; i++) {
+        img.matriz[i] = (Pixel *)malloc(img.width * sizeof(Pixel));
+        if (!img.matriz[i]) {
+            printf("Erro: Falha na alocação de memória para matriz[%d].\n", i);
+            for (int j = 0; j < i; j++) free(img.matriz[j]);
+            free(img.matriz);
+            free(vetorR);
+            free(vetorG);
+            free(vetorB);
+            exit(1);
+        }
+    }
+
+    int indice = 0;
+    reconstruir(&img, vetorR, vetorG, vetorB, &indice, 0, height - 1, 0, width - 1);
+
+    FILE *saida = fopen(arquivoSaida, "wb");
+    if (!saida) {
+        perror("Erro ao criar arquivo BMP de saída");
+        freeImagemBMP(&img);
+        free(vetorR);
+        free(vetorG);
+        free(vetorB);
+        exit(1);
+    }
+
+    fwrite(img.header, sizeof(unsigned char), 54, saida);
+    for (int i = 0; i < img.height; i++) {
+        for (int j = 0; j < img.width; j++) {
+            fwrite(&img.matriz[i][j], sizeof(Pixel), 1, saida);
+        }
+        for (int k = 0; k < img.padding; k++) {
+            unsigned char zero = 0;
+            fwrite(&zero, sizeof(unsigned char), 1, saida);
+        }
+    }
+    fclose(saida);
+
+    freeImagemBMP(&img);
+    free(vetorR);
+    free(vetorG);
+    free(vetorB);
+}
+
+void reconstruir(ImagemBMP *img, unsigned char *vetorR, unsigned char *vetorG, unsigned char *vetorB, int *indice, int linhaIni, int linhaFim, int colIni, int colFim) {
+    int lin = linhaFim - linhaIni + 1;
+    int col = colFim - colIni + 1;
+
+    if (lin <= 3 || col <= 3) {
+        Pixel p = {vetorR[*indice], vetorG[*indice], vetorB[*indice]};
+        (*indice)++;
+        preencherMatriz(img, linhaIni, linhaFim, colIni, colFim, p);
+        return;
+    }
+
+    int meioLinha = (linhaIni + linhaFim) / 2;
+    int meioCol = (colIni + colFim) / 2;
+
+    reconstruir(img, vetorR, vetorG, vetorB, indice, linhaIni, meioLinha, colIni, meioCol);
+    reconstruir(img, vetorR, vetorG, vetorB, indice, linhaIni, meioLinha, meioCol + 1, colFim);
+    reconstruir(img, vetorR, vetorG, vetorB, indice, meioLinha + 1, linhaFim, colIni, meioCol);
+    reconstruir(img, vetorR, vetorG, vetorB, indice, meioLinha + 1, linhaFim, meioCol + 1, colFim);
+}
+
+void preencherMatriz(ImagemBMP *img, int linhaIni, int linhaFim, int colIni, int colFim, Pixel cor) {
+    for (int i = linhaIni; i <= linhaFim; i++) {
+        for (int j = colIni; j <= colFim; j++) {
+            img->matriz[i][j] = cor;
+        }
+    }
+}
+
+int calculaPadding(int largura) {
+    int rowSize = largura * 3;
+    return (4 - (rowSize % 4)) % 4;
+}
+
+void freeImagemBMP(ImagemBMP *img) {
+    if (img->matriz) {
+        for (int i = 0; i < img->height; i++) {
+            free(img->matriz[i]);
+        }
+        free(img->matriz);
+        img->matriz = NULL;
+    }
+}
