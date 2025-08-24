@@ -1,0 +1,50 @@
+#include <stdio.h>
+#include <stdlib.h>
+#define LINHAS (100)
+#define COLUNAS (100)
+
+// Função para desenhar o triângulo de Sierpinski
+void desenho(int matriz[][COLUNAS], int tamanho, int nivel, int x, int y) {
+    if (nivel == 0) {
+        // Desenhar triângulo na matriz
+        int i, j;
+        for (i = 0; i < tamanho; i++) {
+            for (j = 0; j <= i; j++) {
+                matriz[x + i][y + j] = 1;
+            }
+        }
+    } else {
+        // Dividir o triângulo em três partes
+        desenho(matriz, tamanho / 2, nivel - 1, x, y);
+        desenho(matriz, tamanho / 2, nivel - 1, x + tamanho / 2, y);
+        desenho(matriz, tamanho / 2, nivel - 1, x + tamanho / 4, y + tamanho / 2);
+    }
+}
+
+int main() {
+    int tamanho, nivel, x, y, i, j;
+    int matriz[LINHAS][COLUNAS] = {0};  // Inicializar a matriz com zeros
+
+    // Solicitar tamanho do triângulo e nível de recursão ao usuário
+    printf("Digite o tamanho do triângulo: ");
+    scanf("%d", &tamanho);
+    printf("Digite o nível de recursão: ");
+    scanf("%d", &nivel);
+
+    // Desenhar o triângulo de Sierpinski
+    desenho(matriz, tamanho, nivel, 0, 0);
+
+    // Imprimir a matriz
+    for (i = 0; i < LINHAS; i++) {
+        for (j = 0; j < COLUNAS; j++) {
+            if (matriz[i][j] == 1) {
+                printf("*");
+            } else {
+                printf(" ");
+            }
+        }
+        printf("\n");
+    }
+
+    return 0;
+}
