@@ -1,0 +1,91 @@
+#include <stdio.h>
+#include <stdlib.h> // atoi()
+#include <string.h> // strcpy()
+
+#define TAMANHONOMECLIENTE 40
+#define NUM_CLIENTES 10
+
+struct cliente {
+  char nome_cliente[TAMANHONOMECLIENTE];
+  int idade_cliente;
+};
+
+// Função de comparação para ordenar clientes por idade
+int compararClientes(const void *a, const void *b) {
+  struct cliente *clienteA = (struct cliente *)a;
+  struct cliente *clienteB = (struct cliente *)b;
+  return clienteA->idade_cliente - clienteB->idade_cliente;
+}
+
+void exibirClientes(struct cliente *lista, int tamanho) {
+  for (int i = 0; i < tamanho; i++) {
+    printf("\nNome do cliente: %s", lista[i].nome_cliente);
+    printf("Idade do cliente: %d\n", lista[i].idade_cliente);
+  }
+}
+
+void classificarClientes(struct cliente *lista, int tamanho) {
+  qsort(lista, tamanho, sizeof(struct cliente), compararClientes);
+}
+
+int main() {
+  struct cliente listaclientes[NUM_CLIENTES];
+  char nomearquivo[50];
+  char nome[TAMANHONOMECLIENTE];
+  int idade;
+
+  puts("Digite o nome do arquivo a ser criado: ");
+  scanf("%s", nomearquivo);
+  const char *FILENAME = nomearquivo;
+
+  // Abrindo arquivo para escrita
+  FILE *arquivosaida = fopen(FILENAME, "w");
+  if (arquivosaida == NULL) {
+    printf("Erro ao abrir o arquivo %s\n", nomearquivo);
+    return 1;
+  }
+
+  // Inserindo 10 clientes
+  for (int i = 0; i < NUM_CLIENTES; i++) {
+    printf("Digite o nome do cliente %d: ", i + 1);
+    getchar(); // Limpar o buffer antes de ler o nome
+    fgets(nome, TAMANHONOMECLIENTE, stdin);
+    nome[strcspn(nome, "\n")] = '\0'; // Remove newline
+
+    printf("Digite a idade do cliente %d: ", i + 1);
+    scanf("%d", &idade);
+    getchar(); // Limpar o buffer após ler a idade
+
+    strcpy(listaclientes[i].nome_cliente, nome);
+    listaclientes[i].idade_cliente = idade;
+
+    // Gravando no arquivo
+    fprintf(arquivosaida, "%s\n", nome);
+    fprintf(arquivosaida, "%d\n", idade);
+    fputs("-\n", arquivosaida);
+  }
+  fclose(arquivosaida);
+
+  // Ordenando clientes por idade
+  classificarClientes(listaclientes, NUM_CLIENTES);
+
+  // Salvando os dados ordenados
+  arquivosaida = fopen(FILENAME, "w");
+  if (arquivosaida == NULL) {
+    printf("Erro ao abrir o arquivo %s\n", nomearquivo);
+    return 1;
+  }
+
+  for (int i = 0; i < NUM_CLIENTES; i++) {
+    fprintf(arquivosaida, "%s\n", listaclientes[i].nome_cliente);
+    fprintf(arquivosaida, "%d\n", listaclientes[i].idade_cliente);
+    fputs("-\n", arquivosaida);
+  }
+  fclose(arquivosaida);
+
+  // Exibindo os clientes ordenados
+  printf("\nCLIENTES ORDENADOS POR IDADE:\n");
+  exibirClientes(listaclientes, NUM_CLIENTES);
+
+  return 0;
+}
