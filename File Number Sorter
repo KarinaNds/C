@@ -1,0 +1,57 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#define MAX_NUM 100  // Número máximo de elementos que o programa pode ler
+
+// Função para ordenar um array usando Bubble Sort
+void bubbleSort(int arr[], int n) {
+    int temp;
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - i - 1; j++) {
+            if (arr[j] > arr[j + 1]) {
+                // Troca os elementos
+                temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+        }
+    }
+}
+
+int main() {
+    FILE *entrada, *saida;
+    int numeros[MAX_NUM];
+    int n = 0;
+
+    // Abre o arquivo "entrada.txt" para leitura
+    entrada = fopen("entrada.txt", "r");
+    if (entrada == NULL) {
+        printf("Erro: Não foi possível abrir o arquivo 'entrada.txt'.\n");
+        return 1;
+    }
+
+    // Lê os números do arquivo e armazena no array
+    while (fscanf(entrada, "%d", &numeros[n]) != EOF && n < MAX_NUM) {
+        n++;
+    }
+    fclose(entrada);  // Fecha o arquivo de entrada
+
+    // Ordena os números usando Bubble Sort
+    bubbleSort(numeros, n);
+
+    // Abre o arquivo "saida.txt" para escrita
+    saida = fopen("saida.txt", "w");
+    if (saida == NULL) {
+        printf("Erro: Não foi possível criar o arquivo 'saida.txt'.\n");
+        return 1;
+    }
+
+    // Escreve os números ordenados no arquivo de saída
+    for (int i = 0; i < n; i++) {
+        fprintf(saida, "%d\n", numeros[i]);
+    }
+    fclose(saida);  // Fecha o arquivo de saída
+
+    printf("Arquivo 'saida.txt' criado com sucesso.\n");
+    return 0;
+}
