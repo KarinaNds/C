@@ -1,0 +1,250 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <locale.h>
+#include <ctype.h>
+#define MAX 100
+
+/*cria o tipo de dado*/
+typedef struct {
+    char nome[100];
+    char genero[30];
+    int ano;
+    int clas;
+    float ranking;
+} Catalogo; 
+
+int qtde = 0;
+Catalogo catalogo[MAX];
+
+int addFilmes(){
+  if(qtde < MAX){    
+      int i,j;
+      Catalogo novoFilme; 
+      scanf("%*c");
+      fputs("Nome do filme: ", stdout); 
+      fgets(novoFilme.nome, 100, stdin);
+      novoFilme.nome[strlen(novoFilme.nome) -1] = '\0';
+
+      for(i = 0; i<strlen(novoFilme.nome); i++){
+          novoFilme.nome[i] = tolower(novoFilme.nome[i]);
+      }
+
+      fputs("Genero: ", stdout);
+      fgets(novoFilme.genero, 30, stdin);
+      novoFilme.genero[strlen(novoFilme.genero) -1] = '\0';
+
+      for(j = 0; j<strlen(novoFilme.genero); j++){
+           novoFilme.genero[j] = tolower(novoFilme.genero[j]);
+       }
+    
+      fputs("Ano: ", stdout);
+      scanf("%d", &novoFilme.ano);
+
+      fputs("Classificação etaria: ", stdout);
+      scanf("%d",&novoFilme.clas);
+
+      fputs("Ranking: ", stdout);
+      scanf("%f", &novoFilme.ranking);
+
+      catalogo[qtde] = novoFilme;
+      qtde++;
+      printf("Filme cadastrado com sucesso!\n");
+    
+    }else{
+      printf("O vetor esta cheio");
+
+    }
+  return qtde;
+}
+
+void listarFilmes(){
+  printf("Listagem de Filmes:\n ");
+  int i;
+  for(i=0; i < qtde; i++){
+    printf("Filme: %s; Genero: %s; Ano: %d; Classificação: %d anos; Ranking: %.1f\n", catalogo[i].nome,catalogo[i].genero, catalogo[i].ano, catalogo[i].clas, catalogo[i].ranking);
+  }
+}
+
+void listarFilmesCategorias(const char filtro_nome[], const char filtro_genero[], int filtro_clas, float filtro_ranking, int filtro_ano) {
+    printf("Listagem de Filmes:\n");
+    int i;
+    int encontrou = 0;
+    for (i = 0; i < qtde; i++) {
+        if ((strlen(filtro_nome) == 0 || strcmp(catalogo[i].nome, filtro_nome) == 0) &&
+            (strlen(filtro_genero) == 0 || strcmp(catalogo[i].genero, filtro_genero) == 0) &&
+            (filtro_clas == 0 || catalogo[i].clas == filtro_clas) &&
+            (filtro_ranking == 0 || catalogo[i].ranking == filtro_ranking) &&
+            (filtro_ano == 0 || catalogo[i].ano == filtro_ano)) {
+            printf("Filme: %s; Gênero: %s; Ano: %d; Classificação: %d anos; Ranking: %.2f\n",
+                   catalogo[i].nome, catalogo[i].genero, catalogo[i].ano,
+                   catalogo[i].clas, catalogo[i].ranking);
+            encontrou = 1;
+        }
+    }
+
+    if (!encontrou) {
+        printf("Não foi possível encontrar filmes com esses filtros.\n");
+    }
+}
+
+void removerFilme() {
+    printf("Digite o nome do filme que deseja remover: ");
+    char nome_remover[100];
+    scanf("%*c");
+    fgets(nome_remover, 100, stdin);
+    nome_remover[strlen(nome_remover) -1] = '\0'; // Remove a nova linha
+
+    int i, j;
+    int encontrado = 0;
+
+    for (i = 0; i < qtde; i++) {
+        if (strcmp(catalogo[i].nome, nome_remover) == 0){
+            encontrado = 1;
+            // Remove o filme do vetor
+            for (j = i; j < qtde - 1; j++) {
+                catalogo[j] = catalogo[j + 1];
+            }
+            qtde--;
+            printf("Filme removido com sucesso!\n");
+            break;
+        }
+    }
+
+  
+    if (!encontrado) {
+        printf("O filme não foi encontrado.\n");
+        return;
+    }
+
+    // Remover o filme do arquivo
+    const char *FILENAME = "catalogo_filmes.txt";
+    FILE *arquivo = fopen(FILENAME, "w");
+
+    if (arquivo == NULL) {
+        printf("***Erro ao abrir o arquivo '%s' para escrita!\n", FILENAME);
+        return;
+    }
+
+    // Escreve os filmes restantes de volta no arquivo
+    for (i = 0; i < qtde; i++){
+        fprintf(arquivo, "%s;%s;%d;%d;%.2f\n", catalogo[i].nome, catalogo[i].genero, catalogo[i].ano, catalogo[i].clas, catalogo[i].ranking);
+    }
+
+    fclose(arquivo);
+}
+
+void salvarEmArquivo() {
+
+    const char *FILENAME = "catalogo_filmes.txt";
+    FILE *arquivo = fopen(FILENAME, "w");
+
+    if (arquivo == NULL) {
+        printf("***Erro ao abrir o arquivo '%s'!\n", FILENAME);
+        return;
+    }
+
+    for (int i = 0; i < qtde; i++) {
+        fprintf(arquivo, "%s;%s;%d;%d;%.2f\n", catalogo[i].nome, catalogo[i].genero, catalogo[i].ano, catalogo[i].clas, catalogo[i].ranking);
+    }
+
+    fclose(arquivo);
+    printf("Dados salvos com sucesso no arquivo '%s'!\n", FILENAME);
+}
+
+void carregarDoArquivo() {
+      const char *FILENAME = "catalogo_filmes.txt";
+      FILE *arquivo = fopen(FILENAME, "r");
+
+      if (arquivo == NULL) {
+          printf("***Erro ao abrir o arquivo '%s' para leitura!\n", FILENAME);
+          return;
+      }
+
+      // Lê os dados do arquivo e adiciona ao vetor catalogo
+      while (fscanf(arquivo, "%[^;];%[^;];%d;%d;%f\n", catalogo[qtde].nome, catalogo[qtde].genero, &(catalogo[qtde].ano), &(catalogo[qtde].clas), &(catalogo[qtde].ranking)) == 5) {
+          qtde++;
+          if (qtde >= MAX) {
+              break;  // Evita overflow do vetor catalogo
+          }
+      }
+
+      fclose(arquivo);
+  }
+
+int main() {
+    carregarDoArquivo();
+    setlocale(LC_ALL,"pt");
+
+
+    int op;
+    do { 
+
+        printf("\n\nSistema de Gerenciamento de Filmes da Netflix\n\n");
+        printf("1 - Cadastrar filmes\n");
+        printf("2 - Listar Filmes\n");
+        printf("3 - Listar Filmes por Categorias\n");
+        printf("4 - Remover Filme\n");
+        printf("0 - Sair\n");
+        printf("\nDigite uma opção:");
+        scanf("%d", &op);
+
+        switch(op) {
+            case 1:
+                addFilmes();
+                salvarEmArquivo();
+                break;
+
+            case 2:
+                listarFilmes();
+                break;
+
+            case 3: 
+                  {
+                   printf("Digite os filtros:\n");
+                   char filtro_nome[100];
+                   char filtro_genero[30];
+                   int filtro_clas;
+                   float filtro_ranking;
+                   int filtro_ano;
+
+
+                   printf("Título do filme (deixe em branco para ignorar): ");
+                   scanf("%*c");
+                   fgets(filtro_nome, 100, stdin);
+                   filtro_nome[strlen(filtro_nome) -1] = '\0'; // Remove a nova linha
+
+                   printf("Gênero do filme (deixe em branco para ignorar): ");
+                   fgets(filtro_genero, 30, stdin);
+                   filtro_genero[strlen(filtro_genero) -1] = '\0'; // Remove a nova linha
+
+                   printf("Classificação etária do filme ou (0 para ignorar): ");
+                   scanf("%d", &filtro_clas);
+                    
+                   printf("Ano do filme ou (0 para ignorar): ");
+                   scanf("%d", &filtro_ano);
+
+                   printf("Ranking do filme ou (0 para ignorar): ");
+                   scanf("%f", &filtro_ranking);
+
+                   listarFilmesCategorias(filtro_nome, filtro_genero, filtro_clas, filtro_ranking, filtro_ano);
+                   break;
+                }
+
+            case 4:
+                removerFilme();
+                break;
+
+            case 0:
+                printf("Você escolheu sair\n");
+                break;
+
+            default:
+                printf("Digite uma opcao valida\n");
+        }
+    } while(op != 0);
+
+  
+
+    return 0;
+}
